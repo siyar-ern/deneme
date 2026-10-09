@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Yönetim Paneli - Kafe Otomasyonu</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #e84118; --bg: #f5f6fa; --dark: #2f3640; --edit: #fbc531; --code-bg: #273c75; --danger: #eb2f06; --muted: #7f8fa6; --success: #4cd137; --info: #3498db; --btn-purple: #6c5ce7; --btn-yellow: #f39c12; }
+        body { font-family: 'Poppins', sans-serif; margin: 0; background: var(--bg); color: var(--dark); }
+        #login-screen { position: fixed; width: 100%; height: 100%; background: var(--bg); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .login-box { background: white; padding: 40px; border-radius: 10px; width: 300px; text-align: center; box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
+        .login-box input, .login-box button { width: 100%; margin-top: 15px; padding: 12px; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        .login-box button { background: var(--primary); color: white; border: none; cursor: pointer; font-weight: bold; }
+        
+        #main-app { display: none; padding: 20px; max-width: 1000px; margin: 0 auto; }
+        
+        .tabs { display: flex; gap: 15px; margin-bottom: 25px; border-bottom: 2px solid #ddd; padding-bottom: 10px; flex-wrap: wrap; }
+        .tab-btn { padding: 10px 20px; border: none; background: transparent; font-size: 15px; font-weight: 600; cursor: pointer; color: var(--muted); transition: 0.3s; }
+        .tab-btn:hover { color: var(--dark); }
+        .tab-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); margin-bottom: -12px; }
+        
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+ 
+        .header { display: flex; justify-content: space-between; margin-bottom: 20px; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .header-btns { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn { padding: 8px 14px; background: var(--primary); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 5px;}
+        .btn:disabled { opacity: 0.7; cursor: not-allowed; }
+        .btn-red { background: #c23616; color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-edit { background: #e1b12c; color: white; }
+        .btn-success { background: var(--success); color: white; }
+        .btn-info { background: var(--info); color: white; }
+        .btn-code { background: var(--code-bg); color: white; }
+        .btn-purple { background: var(--btn-purple); color: white; }
+        .btn-yellow { background: var(--btn-yellow); color: white; }
+        .btn-cancel { background: var(--muted); display: none; margin-left: 10px; }
+        
+        .form-card { background: white; padding: 20px; border-radius: 10px; margin-bottom: 30px; display: grid; gap: 15px; grid-template-columns: 1fr 1fr; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group.full { grid-column: span 2; }
+        .form-group input, .form-group select, .form-group textarea { padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-family: inherit; }
+        #imagePreview { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; margin-top: 10px; display: none; }
+        #aiGeneratedImagePreview { width: 160px; height: 160px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; margin-top: 10px; display: none; }
+        #aiStatusMsg { font-size: 13px; color: var(--muted); margin-top: 8px; }
+ 
+        .file-upload-wrapper { display: flex; align-items: center; border: 1px solid #ddd; border-radius: 5px; padding: 5px; gap: 10px; }
+        .file-upload-wrapper input[type="file"] { border: none; padding: 0; flex-grow: 1; }
+ 
+        #codeModal, #tableDetailModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 30px; border-radius: 10px; width: 90%; max-width: 600px; box-shadow: 0 5px 25px rgba(0,0,0,0.2); max-height: 80vh; overflow-y: auto; }
+        .modal-content textarea { width: 100%; height: 200px; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-family: monospace; font-size: 13px; box-sizing: border-box; resize: vertical; }
+ 
+        table { width: 100%; background: white; border-collapse: collapse; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-bottom: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+        th { background: #f1f2f6; }
+        td img { width: 50px; height: 50px; object-fit: cover; border-radius: 5px; }
+ 
+        .table-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px; margin-top: 15px; margin-bottom: 30px; }
+        .table-card { height: 120px; background: white; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 1.2rem; font-weight: 600; cursor: pointer; border: 3px solid transparent; box-shadow: 0 4px 10px rgba(0,0,0,0.05); transition: 0.2s; position: relative; text-align: center; }
+        .table-card:hover { transform: translateY(-3px); }
+        .table-empty { border-color: #dcdde1; color: var(--muted); }
+        .table-waiter { background: var(--edit); color: white; border-color: var(--edit); }
+        .table-order { background: var(--primary); color: white; border-color: var(--primary); }
+        .table-ready { background: var(--success); color: white; border-color: var(--success); }
+        .table-payment { background: var(--info); color: white; border-color: var(--info); }
+        .table-status { font-size: 0.75rem; font-weight: 400; margin-top: 4px; background: rgba(0,0,0,0.15); padding: 2px 8px; border-radius: 20px; }
+        .table-price-tag { font-size: 0.8rem; font-weight: 600; margin-top: 4px; color: #fff; background: rgba(0,0,0,0.25); padding: 2px 6px; border-radius: 6px; }
+ 
+        .section-title { font-size: 1.2rem; font-weight: 600; margin-top: 30px; margin-bottom: 15px; color: var(--dark); border-bottom: 2px solid #ddd; padding-bottom: 5px; }
+        .stats-card { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); margin-top: 20px; }
+ 
+        .month-group { margin-bottom: 25px; background: #fff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .month-title { font-size: 1.1rem; font-weight: 600; color: var(--primary); margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .bar-container { display: flex; align-items: center; margin-bottom: 10px; gap: 10px; }
+        .bar-label { width: 140px; font-size: 0.9rem; font-weight: 500; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .bar-track { flex-grow: 1; background: #f1f2f6; border-radius: 6px; height: 22px; position: relative; overflow: hidden; }
+        .bar-fill { background: var(--primary); height: 100%; border-radius: 6px; transition: width 0.5s ease; }
+        .bar-value { width: 60px; font-size: 0.9rem; font-weight: 600; color: var(--dark); }
+        .bar-actions { width: 50px; text-align: right; }
+    </style>
+</head>
+<body>
+ 
+    <div id="login-screen">
+        <div class="login-box">
+            <h2>Yönetici Girişi</h2>
+            <input type="email" id="email" placeholder="E-posta">
+            <input type="password" id="password" placeholder="Şifre">
+            <button id="loginBtn">Giriş Yap</button>
+            <p id="errorMsg" style="color:red; font-size:12px; display:none;">Hatalı giriş!</p>
+        </div>
+    </div>
+ 
+    <!-- KOD İLE ÜRÜN EKLEME MODALI -->
+    <div id="codeModal">
+        <div class="modal-content">
+            <h3>Toplu Metin ile Ürün Ekle</h3>
+            <p style="font-size: 13px; color: var(--muted);">Her satıra bir ürün: <b>Ürün Adı | Kategori | İndirimli Fiyat | Eski Fiyat | Açıklama</b></p>
+            <textarea id="bulkCodeInput" placeholder="Mantı | Makarnalar | 350 | 450 | Özel yoğurtlu ev mantısı"></textarea>
+            <div style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px;">
+                <button id="closeModalBtn" class="btn btn-cancel" style="display:inline-block;">Kapat</button>
+                <button id="processBulkBtn" class="btn">Hepsini Yükle</button>
+            </div>
+            <p id="bulkStatusMsg" style="color:green; font-size:13px; margin-top: 10px;"></p>
+        </div>
+    </div>
+ 
+    <!-- MASA DETAY MODALI -->
+    <div id="tableDetailModal">
+        <div class="modal-content">
+            <h3 id="detailTableTitle">Masa Detayı</h3>
+            <div id="tableDetailContent" style="margin: 15px 0; min-height: 80px;"></div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap;">
+                <button id="modalReadyAllBtn" class="btn btn-info" style="display:none;">✅ Tümünü Hazırla</button>
+                <button id="completeOrdersBtn" class="btn btn-success" style="display:none;">💳 Hesap Ödendi / Kapat</button>
+                <button id="closeDetailModalBtn" class="btn btn-cancel" style="display:inline-block;">Kapat</button>
+            </div>
+        </div>
+    </div>
+ 
+    <div id="main-app">
+        <!-- SEKME MENÜSÜ -->
+        <div class="tabs">
+            <button class="tab-btn active" id="tab-products">Ürün Yönetimi</button>
+            <button class="tab-btn" id="tab-tables">Masalar ve Mutfak Takibi</button>
+            <button class="tab-btn" id="tab-stats">📊 Bar Grafik İstatistikleri</button>
+        </div>
+ 
+        <!-- 1. ÜRÜN YÖNETİMİ -->
+        <div id="view-products" class="view-section active">
+            <div class="header">
+                <h2 id="formTitle">Yeni Ürün Ekle</h2>
+                <div class="header-btns">
+                    <button id="aiMenuReadBtn" class="btn btn-purple">🤖 AI Menü Oku</button>
+                    <button id="openCodeModalBtn" class="btn btn-code">Kod ile Ekle</button>
+                    <button id="deleteAllBtn" class="btn btn-danger">Hepsini Sil</button>
+                    <button class="btn btn-red logout-trigger">Çıkış Yap</button>
+                </div>
+            </div>
+ 
+            <div class="form-card">
+                <input type="hidden" id="editProductId">
+                <div class="form-group">
+                    <label>Ürün Adı</label>
+                    <input type="text" id="pName" placeholder="Örn: Lazanya">
+                </div>
+                <div class="form-group">
+                    <label>Kategori</label>
+                    <select id="pCategory">
+                        <option>Başlangıçlar</option><option>Makarnalar</option><option>Risottolar</option><option>Yan Ürünler</option><option>Tatlılar</option><option>İçecekler</option><option>Sıcak İçecekler</option><option>Soğuk Kahveler</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Normal Fiyat (Üstü Çizili TL)</label>
+                    <input type="number" id="pOldPrice" placeholder="550">
+                </div>
+                <div class="form-group">
+                    <label>İndirimli Fiyat (Güncel TL)</label>
+                    <input type="number" id="pPrice" placeholder="440">
+                </div>
+                <div class="form-group full">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:10px; flex-wrap:wrap;">
+                        <label>Açıklama</label>
+                        <button type="button" id="aiDescGenBtn" class="btn btn-purple">🤖 AI ile Açıklama Yaz</button>
+                    </div>
+                    <textarea id="pDesc" rows="3" placeholder="İçindeki malzemeler..."></textarea>
+                    <div id="aiDescStatusMsg" style="font-size:13px; color:var(--muted); margin-top:6px;"></div>
+                </div>
+                <div class="form-group full">
+                    <label>Yemek Fotoğrafı Seç</label>
+                    <div class="file-upload-wrapper">
+                        <input type="file" id="pImageFile" accept="image/*">
+                        <button type="button" id="aiImageGenBtn" class="btn btn-yellow">✨ AI ile Görsel Üret</button>
+                    </div>
+                    
+                    <img id="imagePreview" alt="Ön izleme">
+                    <img id="aiGeneratedImagePreview" alt="AI Üretimi">
+                    <input type="hidden" id="aiGeneratedImageUrl">
+                    <div id="aiStatusMsg"></div>
+                </div>
+                
+                <div class="form-group full" style="display: flex; align-items: center; margin-top: 15px;">
+                    <button id="saveBtn" class="btn">Ürünü Kaydet</button>
+                    <button id="cancelBtn" class="btn btn-cancel">İptal</button>
+                    <p id="statusMsg" style="color:green; font-size:14px; margin-left: 15px;"></p>
+                </div>
+            </div>
+ 
+            <table>
+                <thead>
+                    <tr><th>Resim</th><th>İsim</th><th>Kategori</th><th>Fiyat</th><th>İşlem</th></tr>
+                </thead>
+                <tbody id="productTable"></tbody>
+            </table>
+        </div>
+ 
+        <!-- 2. MASALAR VE MUTFAK TAKİBİ -->
+        <div id="view-tables" class="view-section">
+            <div class="header">
+                <h2>Masa ve Mutfak Yönetimi</h2>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="number" id="tableCountInput" placeholder="Masa Sayısı" style="padding:8px; border:1px solid #ddd; border-radius:5px; width:100px;" min="1">
+                    <button id="saveTableCountBtn" class="btn">Sayısı Güncelle</button>
+                    <button class="btn btn-red logout-trigger" style="margin-left: 15px;">Çıkış Yap</button>
+                </div>
+            </div>
+            
+            <div class="table-grid" id="tableGrid"></div>
+ 
+            <div class="section-title">🍳 Mutfak ve Ürün Bazlı Servis Takibi</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Masa No</th>
+                        <th>İşlem / Durum</th>
+                        <th>Ürünler</th>
+                        <th>Tutar / Saat</th>
+                        <th>Mutfak İşlemleri</th>
+                    </tr>
+                </thead>
+                <tbody id="liveOrdersTableBody">
+                    <tr><td colspan="5" style="text-align:center; color:var(--muted);">Aktif sipariş veya çağrı bulunmuyor.</td></tr>
+                </tbody>
+            </table>
+        </div>
+ 
+        <!-- 3. İSTATİSTİKLER -->
+        <div id="view-stats" class="view-section">
+            <div class="header">
+                <h2>Ay Bazlı Satış Raporu (Bar Grafik)</h2>
+                <button class="btn btn-red logout-trigger">Çıkış Yap</button>
+            </div>
+ 
+            <div class="form-card" style="grid-template-columns: 1fr 1fr 1fr auto; align-items: flex-end;">
+                <div class="form-group">
+                    <label>Ay Seçin</label>
+                    <select id="statMonth">
+                        <option value="Ocak">Ocak</option><option value="Şubat">Şubat</option><option value="Mart">Mart</option>
+                        <option value="Nisan">Nisan</option><option value="Mayıs">Mayıs</option><option value="Haziran">Haziran</option>
+                        <option value="Temmuz">Temmuz</option><option value="Ağustos">Ağustos</option><option value="Eylül">Eylül</option>
+                        <option value="Ekim" selected>Ekim</option><option value="Kasım">Kasım</option><option value="Aralık">Aralık</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Ürün Seçin</label>
+                    <select id="statProductSelect"></select>
+                </div>
+                <div class="form-group">
+                    <label>Toplam Adet (Düzelt / Ekle)</label>
+                    <input type="number" id="statQuantity" placeholder="Örn: 100" min="0">
+                </div>
+                <div class="form-group">
+                    <button id="saveStatBtn" class="btn" style="height: 42px;">Kaydet / Güncelle</button>
+                </div>
+            </div>
+ 
+            <div class="stats-card">
+                <div class="section-title" style="margin-top:0;">Aylara Göre Satış Grafikleri</div>
+                <div id="barChartsContainer">
+                    <p style="text-align:center; color:var(--muted);">İstatistikler yükleniyor...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+ 
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+ 
+        const firebaseConfig = {
+            apiKey: "AIzaSyDbtWAtTPpA7cNlddGdFyYMEli9O52TVxQ",
+            authDomain: "yakinkafe.firebaseapp.com",
+            projectId: "yakinkafe",
+            storageBucket: "yakinkafe.firebasestorage.app",
+            messagingSenderId: "706625633005",
+            appId: "1:706625633005:web:3d7efed129b2d0d895eae4"
+        };
+ 
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+ 
+        document.getElementById('loginBtn').onclick = () => {
+            const e = document.getElementById('email').value, p = document.getElementById('password').value;
+            signInWithEmailAndPassword(auth, e, p).catch(() => document.getElementById('errorMsg').style.display = 'block');
+        };
+        
+        document.querySelectorAll('.logout-trigger').forEach(btn => btn.onclick = () => signOut(auth));
+ 
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                if (user.uid === "n9SfOjJRdjTbSCM5mE1fLX9rvml2" || user.email === "deneme@gmail.com") {
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('main-app').style.display = 'block';
+                    loadAdminMenu();
+                    loadProductsForStats();
+                    listenToStatsAndOrders();
+                } else {
+                    signOut(auth);
+                    alert("Erişim Engellendi!");
+                }
+            } else {
+                document.getElementById('login-screen').style.display = 'flex';
+                document.getElementById('main-app').style.display = 'none';
+            }
+        });
+ 
+        const tabs = [
+            { btn: 'tab-products', view: 'view-products' },
+            { btn: 'tab-tables', view: 'view-tables' },
+            { btn: 'tab-stats', view: 'view-stats' }
+        ];
+        tabs.forEach(t => {
+            document.getElementById(t.btn).onclick = () => {
+                tabs.forEach(x => {
+                    document.getElementById(x.btn).classList.remove('active');
+                    document.getElementById(x.view).classList.remove('active');
+                });
+                document.getElementById(t.btn).classList.add('active');
+                document.getElementById(t.view).classList.add('active');
+            };
+        });
+ 
+        let currentTableCount = 0;
+        let activeOrders = {}; 
+ 
+        document.getElementById('saveTableCountBtn').onclick = async () => {
+            const count = parseInt(document.getElementById('tableCountInput').value);
+            if(count > 0) {
+                await setDoc(doc(db, "settings", "general"), { tableCount: count }, { merge: true });
+                alert("Masa sayısı güncellendi!");
+            } else alert("Geçerli bir sayı girin.");
+        };
+ 
+        onSnapshot(doc(db, "settings", "general"), (docSnap) => {
+            if(docSnap.exists()) {
+                currentTableCount = docSnap.data().tableCount || 0;
+                document.getElementById('tableCountInput').value = currentTableCount;
+                renderTables();
+            }
+        });
+ 
+        async function listenToStatsAndOrders() {
+            onSnapshot(collection(db, "orders"), async (snapshot) => {
+                activeOrders = {};
+                let liveListHtml = '';
+ 
+                snapshot.forEach(d => {
+                    const data = d.data();
+                    const id = d.id;
+ 
+                    if(data.status !== 'completed') {
+                        if(!activeOrders[data.tableNo]) activeOrders[data.tableNo] = [];
+                        activeOrders[data.tableNo].push({ id, ...data });
+ 
+                        let timeStr = data.createdAt?.toDate ? data.createdAt.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
+                        
+                        if(data.type === 'waiter') {
+                            liveListHtml += `<tr>
+                                <td><strong>Masa ${data.tableNo}</strong></td>
+                                <td><span style="background:var(--edit); color:white; padding:3px 8px; border-radius:10px; font-size:12px;">🔔 Garson Çağrısı</span></td>
+                                <td>Masa garson çağırıyor.</td>
+                                <td>${timeStr}</td>
+                                <td><button class="btn btn-success" onclick="window.updateOrderStatus('${id}', 'completed')">Kapat / İlgilen</button></td>
+                            </tr>`;
+                        } else if(data.type === 'payment_request') {
+                            liveListHtml += `<tr>
+                                <td><strong>Masa ${data.tableNo}</strong></td>
+                                <td><span style="background:var(--info); color:white; padding:3px 8px; border-radius:10px; font-size:12px;">💳 Hesap İstendi</span></td>
+                                <td>Masa hesap ödemek istiyor.</td>
+                                <td>${timeStr}</td>
+                                <td><button class="btn btn-success" onclick="window.closeTablePayments(${data.tableNo})">Hesap Al / Kapat</button></td>
+                            </tr>`;
+                        } else if(data.type === 'order') {
+                            let itemsText = '<ul style="margin:0; padding-left:15px;">';
+                            if(data.items) {
+                                data.items.forEach((item, idx) => {
+                                    let isItemReady = item.ready === true;
+                                    let itemStatusText = isItemReady 
+                                        ? `<span style="color:var(--success); font-weight:600;">[✅ Hazır]</span>` 
+                                        : `<button class="btn btn-info" style="padding:2px 6px; font-size:11px;" onclick="window.toggleItemReady('${id}', ${idx})">Hazır De</button>`;
+                                    
+                                    itemsText += `<li style="margin-bottom:4px;">${item.name} (${item.price} TL) ${itemStatusText}</li>`;
+                                });
+                            }
+                            itemsText += '</ul>';
+ 
+                            let allReady = data.items && data.items.length > 0 && data.items.every(i => i.ready === true);
+                            let statusBadge = allReady 
+                                ? '<span style="background:var(--success); color:white; padding:3px 8px; border-radius:10px; font-size:12px;">✅ Tümü Hazır</span>' 
+                                : '<span style="background:var(--primary); color:white; padding:3px 8px; border-radius:10px; font-size:12px;">🔥 Hazırlanıyor</span>';
+ 
+                            let actionButtons = `
+                                <button class="btn btn-info" style="margin-bottom:5px;" onclick="window.markAllItemsReady('${id}')">✅ Tümünü Hazırla</button><br>
+                                <button class="btn btn-red" onclick="window.updateOrderStatus('${id}', 'completed')">İptal Et</button>
+                            `;
+ 
+                            liveListHtml += `<tr>
+                                <td><strong>Masa ${data.tableNo}</strong></td>
+                                <td>${statusBadge}</td>
+                                <td>${itemsText}</td>
+                                <td><b>${data.totalPrice} TL</b><br><small>${timeStr}</small></td>
+                                <td>${actionButtons}</td>
+                            </tr>`;
+                        }
+                    }
+                });
+ 
+                renderTables();
+                const liveBody = document.getElementById('liveOrdersTableBody');
+                liveBody.innerHTML = liveListHtml || '<tr><td colspan="5" style="text-align:center; color:var(--muted);">Aktif sipariş veya çağrı bulunmuyor.</td></tr>';
+            });
+ 
+            onSnapshot(collection(db, "monthly_stats"), (statSnap) => {
+                renderBarCharts(statSnap);
+            });
+        }
+ 
+        window.toggleItemReady = async (orderId, itemIndex) => {
+            try {
+                const orderRef = doc(db, "orders", orderId);
+                const orderSnap = await getDoc(orderRef);
+                if(orderSnap.exists()) {
+                    let items = orderSnap.data().items || [];
+                    items[itemIndex].ready = !items[itemIndex].ready;
+                    await updateDoc(orderRef, { items: items });
+                }
+            } catch(e) {
+                alert("Güncellenirken hata oluştu.");
+            }
+        };
+ 
+        window.markAllItemsReady = async (orderId) => {
+            try {
+                const orderRef = doc(db, "orders", orderId);
+                const orderSnap = await getDoc(orderRef);
+                if(orderSnap.exists()) {
+                    let items = orderSnap.data().items || [];
+                    items.forEach(item => { item.ready = true; });
+                    await updateDoc(orderRef, { items: items });
+                }
+            } catch(e) {
+                alert("Hata oluştu.");
+            }
+        };
+ 
+        window.closeTablePayments = async (tableNo) => {
+            if(confirm(`Masa ${tableNo} hesabı kapatılıp istatistiklere işlensin mi?`)) {
+                try {
+                    const events = activeOrders[tableNo] || [];
+                    const monthsNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+                    const currentMonth = monthsNames[new Date().getMonth()];
+ 
+                    for(const ev of events) {
+                        if(ev.type === 'order' && ev.items) {
+                            for(const item of ev.items) {
+                                const statDocId = `${currentMonth}_${item.name}`;
+                                const statRef = doc(db, "monthly_stats", statDocId);
+                                const statSnap = await getDoc(statRef);
+ 
+                                let existingQty = 0;
+                                if(statSnap.exists()) {
+                                    existingQty = statSnap.data().quantity || 0;
+                                }
+ 
+                                await setDoc(statRef, {
+                                    month: currentMonth,
+                                    productName: item.name,
+                                    quantity: existingQty + 1,
+                                    updatedAt: new Date()
+                                });
+                            }
+                        }
+                        await updateDoc(doc(db, "orders", ev.id), { status: 'completed' });
+                    }
+                    alert(`Masa ${tableNo} hesabı kapatıldı!`);
+                } catch(e) {
+                    alert("Hesap kapatılırken hata oluştu.");
+                }
+            }
+        };
+ 
+        window.updateOrderStatus = async (orderId, newStatus) => {
+            try { await updateDoc(doc(db, "orders", orderId), { status: newStatus }); } catch(e) { alert("Hata oluştu."); }
+        };
+ 
+        function renderTables() {
+            const grid = document.getElementById('tableGrid');
+            grid.innerHTML = '';
+            for(let i = 1; i <= currentTableCount; i++) {
+                const events = activeOrders[i] || [];
+                let statusClass = 'table-empty', statusText = 'Boş';
+                let tableTotalPrice = 0;
+                
+                const hasWaiterCall = events.some(e => e.type === 'waiter');
+                const paymentRequested = events.some(e => e.type === 'payment_request');
+                const orderEvents = events.filter(e => e.type === 'order');
+                
+                orderEvents.forEach(ev => { tableTotalPrice += Number(ev.totalPrice || 0); });
+ 
+                let hasOrder = orderEvents.length > 0;
+                let allItemsReady = hasOrder && orderEvents.every(ev => ev.items && ev.items.every(item => item.ready === true));
+                let someItemReady = hasOrder && orderEvents.some(ev => ev.items && ev.items.some(item => item.ready === true));
+ 
+                if(paymentRequested) {
+                    statusClass = 'table-payment';
+                    statusText = '💳 Hesap İstendi';
+                } else if(allItemsReady) {
+                    statusClass = 'table-ready'; 
+                    statusText = '✅ Tümü Hazır'; 
+                } else if(someItemReady) {
+                    statusClass = 'table-ready'; 
+                    statusText = '✅ Hazır Ürün var';
+                } else if(hasOrder) { 
+                    statusClass = 'table-order'; 
+                    statusText = '🔥 Hazırlanıyor'; 
+                } else if(hasWaiterCall) { 
+                    statusClass = 'table-waiter'; 
+                    statusText = '🔔 Çağrı'; 
+                }
+ 
+                let priceHtml = tableTotalPrice > 0 ? `<div class="table-price-tag">${tableTotalPrice} TL</div>` : '';
+ 
+                grid.innerHTML += `
+                    <div class="table-card ${statusClass}" onclick="openTableDetail(${i})">
+                        Masa ${i}
+                        <div class="table-status">${statusText}</div>
+                        ${priceHtml}
+                    </div>
+                `;
+            }
+        }
+ 
+        function renderBarCharts(statSnap) {
+            const container = document.getElementById('barChartsContainer');
+            if(statSnap.empty) {
+                container.innerHTML = '<p style="text-align:center; color:var(--muted);">Henüz kayıtlı istatistik bulunmuyor.</p>';
+                return;
+            }
+ 
+            let monthsData = {};
+            statSnap.forEach(d => {
+                const s = d.data();
+                if(!monthsData[s.month]) monthsData[s.month] = [];
+                monthsData[s.month].push({ id: d.id, name: s.productName, qty: s.quantity });
+            });
+ 
+            let html = '';
+            for(const [month, items] of Object.entries(monthsData)) {
+                let maxQty = Math.max(...items.map(i => i.qty), 1);
+ 
+                html += `<div class="month-group">
+                    <div class="month-title">📅 ${month} Ayı Satışları</div>`;
+                
+                items.forEach(item => {
+                    let percentage = Math.round((item.qty / maxQty) * 100);
+                    if(percentage < 5) percentage = 5;
+ 
+                    html += `<div class="bar-container">
+                        <div class="bar-label" title="${item.name}">${item.name}</div>
+                        <div class="bar-track">
+                            <div class="bar-fill" style="width: ${percentage}%;"></div>
+                        </div>
+                        <div class="bar-value">${item.qty} Adet</div>
+                        <div class="bar-actions">
+                            <button class="btn btn-red" style="padding: 3px 6px; font-size:11px;" onclick="window.deleteStat('${item.id}')">Sil</button>
+                        </div>
+                    </div>`;
+                });
+ 
+                html += `</div>`;
+            }
+ 
+            container.innerHTML = html;
+        }
+ 
+        async function loadProductsForStats() {
+            const select = document.getElementById('statProductSelect');
+            const snap = await getDocs(collection(db, "products"));
+            select.innerHTML = '';
+            snap.forEach(d => {
+                const p = d.data();
+                select.innerHTML += `<option value="${p.name}">${p.name}</option>`;
+            });
+        }
+ 
+        document.getElementById('saveStatBtn').onclick = async () => {
+            const month = document.getElementById('statMonth').value;
+            const productName = document.getElementById('statProductSelect').value;
+            const quantity = parseInt(document.getElementById('statQuantity').value);
+ 
+            if(!productName || isNaN(quantity)) return alert("Lütfen ürün seçin ve geçerli bir adet girin!");
+ 
+            try {
+                const docId = `${month}_${productName}`;
+                await setDoc(doc(db, "monthly_stats", docId), {
+                    month: month,
+                    productName: productName,
+                    quantity: quantity,
+                    updatedAt: new Date()
+                });
+                alert(`${month} ayı için ${productName} adedi başarıyla güncellendi!`);
+                document.getElementById('statQuantity').value = '';
+            } catch(e) {
+                alert("Hata oluştu.");
+            }
+        };
+ 
+        window.deleteStat = async (statId) => {
+            if(confirm("Silmek istediğinize emin misiniz?")) {
+                await deleteDoc(doc(db, "monthly_stats", statId));
+            }
+        };
+ 
+        window.openTableDetail = (tableNo) => {
+            const modal = document.getElementById('tableDetailModal');
+            const content = document.getElementById('tableDetailContent');
+            const events = activeOrders[tableNo] || [];
+            document.getElementById('detailTableTitle').innerText = `Masa ${tableNo} Detayı`;
+            
+            if(events.length === 0) {
+                content.innerHTML = '<p style="color:var(--muted); text-align:center;">Aktif işlem yok.</p>';
+                document.getElementById('completeOrdersBtn').style.display = 'none';
+                document.getElementById('modalReadyAllBtn').style.display = 'none';
+            } else {
+                let html = '';
+                let totalTablePrice = 0;
+                let hasUnreadyItems = false;
+                
+                events.forEach(ev => {
+                    if(ev.type === 'waiter') html += `<div style="margin-bottom:8px;">🔔 Garson Çağrıldı</div>`;
+                    else if(ev.type === 'payment_request') html += `<div style="margin-bottom:8px; color:var(--info); font-weight:bold;">💳 Müşteri Hesap İstedi!</div>`;
+                    else if(ev.type === 'order') {
+                        totalTablePrice += Number(ev.totalPrice || 0);
+                        let itemsSummary = ev.items ? ev.items.map(i => `${i.name} (${i.ready ? '✅' : '🔥'})`).join(', ') : '';
+                        html += `<div>🛒 Sipariş: ${itemsSummary} - <b>${ev.totalPrice} TL</b></div>`;
+                        if(ev.items && ev.items.some(i => !i.ready)) hasUnreadyItems = true;
+                    }
+                });
+                content.innerHTML = html + `<hr><h4 style="margin:10px 0;">Toplam Hesap: ${totalTablePrice} TL</h4>`;
+                
+                const readyAllBtn = document.getElementById('modalReadyAllBtn');
+                if(hasUnreadyItems) {
+                    readyAllBtn.style.display = 'inline-block';
+                    readyAllBtn.onclick = async () => {
+                        for(const ev of events) {
+                            if(ev.type === 'order') await window.markAllItemsReady(ev.id);
+                        }
+                        modal.style.display = 'none';
+                    };
+                } else {
+                    readyAllBtn.style.display = 'none';
+                }
+ 
+                document.getElementById('completeOrdersBtn').style.display = 'inline-block';
+                document.getElementById('completeOrdersBtn').onclick = () => {
+                    window.closeTablePayments(tableNo);
+                    modal.style.display = 'none';
+                };
+            }
+            modal.style.display = 'flex';
+        };
+ 
+        document.getElementById('closeDetailModalBtn').onclick = () => document.getElementById('tableDetailModal').style.display = 'none';
+ 
+        const codeModal = document.getElementById('codeModal');
+        document.getElementById('openCodeModalBtn').onclick = () => codeModal.style.display = 'flex';
+        document.getElementById('closeModalBtn').onclick = () => codeModal.style.display = 'none';
+ 
+        document.getElementById('processBulkBtn').onclick = async () => {
+            const text = document.getElementById('bulkCodeInput').value.trim();
+            const status = document.getElementById('bulkStatusMsg');
+            if(!text) return alert("Ürünleri girin!");
+            status.innerText = "Yükleniyor...";
+            const lines = text.split("\n");
+            let count = 0;
+            for (let line of lines) {
+                if(!line.includes('|')) continue;
+                const p = line.split('|').map(x => x.trim());
+                await addDoc(collection(db, "products"), { name: p[0]||"Ürün", category: p[1]||"Makarnalar", price: p[2]||"100", oldPrice: p[3]||"", desc: p[4]||"", imageUrl: "", createdAt: new Date() });
+                count++;
+            }
+            status.innerText = `${count} ürün eklendi!`;
+            setTimeout(() => { codeModal.style.display = 'none'; status.innerText = ''; document.getElementById('bulkCodeInput').value = ''; loadAdminMenu(); loadProductsForStats(); }, 1500);
+        };
+ 
+        document.getElementById('deleteAllBtn').onclick = async () => {
+            if(confirm("Tüm ürünler silinecek!")) {
+                const snap = await getDocs(collection(db, "products"));
+                await Promise.all(snap.docs.map(d => deleteDoc(doc(db, "products", d.id))));
+                loadAdminMenu();
+            }
+        };
+ 
+        // Resim Yükleme (Manuel)
+        const fileInput = document.getElementById('pImageFile');
+        const imagePreview = document.getElementById('imagePreview');
+        const aiGeneratedPreview = document.getElementById('aiGeneratedImagePreview');
+        const aiGeneratedUrlInput = document.getElementById('aiGeneratedImageUrl');
+        const aiStatusMsg = document.getElementById('aiStatusMsg');
+ 
+        fileInput.onchange = () => { 
+            const [f] = fileInput.files; 
+            if(f) { 
+                imagePreview.src = URL.createObjectURL(f); 
+                imagePreview.style.display = 'block'; 
+                aiGeneratedPreview.style.display = 'none';
+                aiGeneratedUrlInput.value = '';
+                aiStatusMsg.innerText = '';
+            } 
+        };
+ 
+        document.getElementById('saveBtn').onclick = async () => {
+            const btn = document.getElementById('saveBtn'), msg = document.getElementById('statusMsg'), editId = document.getElementById('editProductId').value;
+            const name = document.getElementById('pName').value, category = document.getElementById('pCategory').value;
+            const oldPrice = document.getElementById('pOldPrice').value, price = document.getElementById('pPrice').value, desc = document.getElementById('pDesc').value;
+            if(!name || !price) return alert("İsim ve fiyat zorunludur!");
+            btn.innerText = "Kaydediliyor...";
+            try {
+                let finalImageUrl = "";
+                
+                if (fileInput.files.length > 0) {
+                    const fd = new FormData(); fd.append('image', fileInput.files[0]);
+                    const res = await fetch('https://api.imgbb.com/1/upload?key=b644a5f26257bdfb722d1b474a850ff0', { method: 'POST', body: fd });
+                    const rData = await res.json();
+                    if(rData.success) finalImageUrl = rData.data.url;
+                } 
+                else if (aiGeneratedUrlInput.value) {
+                    finalImageUrl = aiGeneratedUrlInput.value;
+                }
+ 
+                if (editId) {
+                    const uData = { name, category, oldPrice, price, desc };
+                    if(finalImageUrl) uData.imageUrl = finalImageUrl;
+                    await updateDoc(doc(db, "products", editId), uData);
+                } else {
+                    await addDoc(collection(db, "products"), { name, category, oldPrice, price, desc, imageUrl: finalImageUrl, createdAt: new Date() });
+                }
+                resetForm(); loadAdminMenu(); loadProductsForStats(); msg.innerText = "Başarılı!"; setTimeout(() => msg.innerText = '', 2000);
+            } catch (e) { alert("Hata oluştu."); }
+            btn.innerText = "Ürünü Kaydet";
+        };
+ 
+        async function loadAdminMenu() {
+            const tbody = document.getElementById('productTable');
+            tbody.innerHTML = '<tr><td colspan="5">Yükleniyor...</td></tr>';
+            const snap = await getDocs(collection(db, "products"));
+            tbody.innerHTML = '';
+            snap.forEach(d => {
+                const item = d.data();
+                tbody.innerHTML += `<tr>
+                    <td><img src="${item.imageUrl || ''}"></td><td>${item.name}</td><td>${item.category}</td><td>${item.price} TL</td>
+                    <td><button class="btn btn-edit btn-sm" onclick="editProduct('${d.id}')">Düzenle</button> <button class="btn btn-red btn-sm" onclick="deleteProduct('${d.id}')">Sil</button></td>
+                </tr>`;
+            });
+        }
+ 
+        window.editProduct = async (id) => {
+            const dSnap = await getDoc(doc(db, "products", id));
+            if(dSnap.exists()) {
+                const data = dSnap.data();
+                document.getElementById('editProductId').value = id;
+                document.getElementById('pName').value = data.name;
+                document.getElementById('pCategory').value = data.category;
+                document.getElementById('pOldPrice').value = data.oldPrice || '';
+                document.getElementById('pPrice').value = data.price;
+                document.getElementById('pDesc').value = data.desc || '';
+                
+                imagePreview.style.display = 'none';
+                aiGeneratedPreview.style.display = 'none';
+                aiGeneratedUrlInput.value = '';
+                aiStatusMsg.innerText = '';
+ 
+                if(data.imageUrl) { 
+                    imagePreview.src = data.imageUrl; 
+                    imagePreview.style.display = 'block'; 
+                }
+ 
+                document.getElementById('formTitle').innerText = "Ürünü Düzenle";
+                document.getElementById('saveBtn').innerText = "Değişiklikleri Kaydet";
+                document.getElementById('cancelBtn').style.display = "inline-block";
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        };
+ 
+        document.getElementById('cancelBtn').onclick = resetForm;
+        function resetForm() {
+            document.getElementById('editProductId').value = '';
+            document.getElementById('pName').value = ''; document.getElementById('pOldPrice').value = '';
+            document.getElementById('pPrice').value = ''; document.getElementById('pDesc').value = '';
+            fileInput.value = ''; 
+            imagePreview.style.display = 'none'; imagePreview.src = '';
+            aiGeneratedPreview.style.display = 'none'; aiGeneratedPreview.src = '';
+            aiGeneratedUrlInput.value = '';
+            aiStatusMsg.innerText = '';
+            document.getElementById('aiDescStatusMsg').innerText = '';
+ 
+            document.getElementById('formTitle').innerText = "Yeni Ürün Ekle";
+            document.getElementById('saveBtn').innerText = "Ürünü Kaydet";
+            document.getElementById('cancelBtn').style.display = 'none';
+        }
+ 
+        window.deleteProduct = async (id) => {
+            if(confirm("Silmek istiyor musunuz?")) { await deleteDoc(doc(db, "products", id)); loadAdminMenu(); loadProductsForStats(); }
+        };
+ 
+        // ==========================================
+        // N8N ENTEGRASYONU
+        // ==========================================
+        
+        // CANLI (Production) webhook adresi. "webhook-test" DEĞİL, "webhook".
+        const N8N_IMAGE_WEBHOOK_URL = "https://kaizen-n8n.app.n8n.cloud/webhook/ai-image-generate";
+        
+        // Açıklama (Gemini - ücretsiz)
+        const N8N_DESC_WEBHOOK_URL = "https://kaizen-n8n.app.n8n.cloud/webhook/ai-description";
+ 
+        // Menü okuma henüz hazır değil
+        const N8N_MENU_WEBHOOK_URL = "https://<n8n-sunucunuz>/webhook/ai-menu-read"; 
+ 
+        // --- AI İLE GÖRSEL ÜRET ---
+        document.getElementById('aiImageGenBtn').addEventListener('click', async () => {
+            const productName = document.getElementById('pName').value.trim();
+            const category = document.getElementById('pCategory').value;
+            
+            if (!productName) {
+                alert("Lütfen görsel üretmeden önce 'Ürün Adı' alanını doldurunuz.");
+                document.getElementById('pName').focus();
+                return;
+            }
+ 
+            const btn = document.getElementById('aiImageGenBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "⏳ Üretiliyor...";
+            btn.disabled = true;
+            aiStatusMsg.style.color = 'var(--muted)';
+            aiStatusMsg.innerText = `"${productName}" için görsel hazırlanıyor, bu 10-40 saniye sürebilir...`;
+ 
+            try {
+                const response = await fetch(N8N_IMAGE_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        productName: productName,
+                        category: category,
+                        cafeName: "Yakın Kafe"
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(`Sunucu ${response.status} döndü: ${errText.slice(0, 200)}`);
+                }
+ 
+                const data = await response.json();
+                
+                if (data && data.imageUrl) {
+                    aiGeneratedUrlInput.value = data.imageUrl;
+                    aiGeneratedPreview.src = data.imageUrl;
+                    aiGeneratedPreview.style.display = 'block';
+                    
+                    imagePreview.style.display = 'none';
+                    fileInput.value = '';
+ 
+                    aiStatusMsg.style.color = 'var(--success)';
+                    aiStatusMsg.innerText = "✅ Görsel hazır. Beğendiysen 'Ürünü Kaydet'e bas, beğenmediysen tekrar üret.";
+                } else {
+                    throw new Error("Geçerli görsel linki dönmedi: " + JSON.stringify(data));
+                }
+            } catch (error) {
+                console.error("Görsel üretimi hatası:", error);
+                aiStatusMsg.style.color = 'var(--danger)';
+                aiStatusMsg.innerText = "❌ Görsel üretilemedi. " + error.message;
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+ 
+        // --- AI İLE AÇIKLAMA YAZ ---
+        document.getElementById('aiDescGenBtn').addEventListener('click', async () => {
+            const productName = document.getElementById('pName').value.trim();
+            const category = document.getElementById('pCategory').value;
+            const descBox = document.getElementById('pDesc');
+            const descStatus = document.getElementById('aiDescStatusMsg');
+ 
+            if (!productName) {
+                alert("Lütfen önce 'Ürün Adı' alanını doldurunuz.");
+                document.getElementById('pName').focus();
+                return;
+            }
+            if (descBox.value.trim() && !confirm("Mevcut açıklamanın yerine AI açıklaması yazılsın mı?")) {
+                return;
+            }
+ 
+            const btn = document.getElementById('aiDescGenBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "⏳ Yazılıyor...";
+            btn.disabled = true;
+            descStatus.style.color = 'var(--muted)';
+            descStatus.innerText = "Açıklama hazırlanıyor...";
+ 
+            try {
+                const response = await fetch(N8N_DESC_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ productName, category })
+                });
+ 
+                if (!response.ok) {
+                    const errText = await response.text();
+                    throw new Error(`Sunucu ${response.status} döndü: ${errText.slice(0, 200)}`);
+                }
+ 
+                const data = await response.json();
+                if (data && data.desc) {
+                    descBox.value = data.desc;
+                    descStatus.style.color = 'var(--success)';
+                    descStatus.innerText = "✅ Açıklama yazıldı. Kalori ve alerjenler tahminidir, kendi tarifine göre kontrol edip düzelt.";
+                } else {
+                    throw new Error("Geçerli açıklama dönmedi: " + JSON.stringify(data));
+                }
+            } catch (error) {
+                console.error("Açıklama hatası:", error);
+                descStatus.style.color = 'var(--danger)';
+                descStatus.innerText = "❌ Açıklama yazılamadı. " + error.message;
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+ 
+        // --- AI MENÜ OKU (henüz bağlı değil) ---
+        document.getElementById('aiMenuReadBtn').addEventListener('click', async () => {
+            if (N8N_MENU_WEBHOOK_URL.includes('<n8n-sunucunuz>')) {
+                alert("AI Menü Oku özelliği henüz kurulmadı.");
+                return;
+            }
+            const btn = document.getElementById('aiMenuReadBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "⏳ Menü Okunuyor...";
+            btn.disabled = true;
+ 
+            try {
+                const response = await fetch(N8N_MENU_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ trigger: true })
+                });
+                
+                if (!response.ok) throw new Error("Ağ hatası");
+ 
+                const data = await response.json();
+                
+                if (data) {
+                    if(data.name) document.getElementById('pName').value = data.name;
+                    if(data.price) document.getElementById('pPrice').value = data.price;
+                    if(data.desc) document.getElementById('pDesc').value = data.desc;
+                    if(data.category) {
+                        const select = document.getElementById('pCategory');
+                        for(let i=0; i < select.options.length; i++) {
+                            if(select.options[i].text.toLowerCase() === data.category.toLowerCase()) {
+                                select.selectedIndex = i;
+                                break;
+                            }
+                        }
+                    }
+                    alert("Menü verileri başarıyla çekildi!");
+                }
+            } catch (error) {
+                console.error("Menü okuma hatası:", error);
+                alert("N8N sunucusuna ulaşılamadı. Webhook URL'sini kontrol edin.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+ 
+    </script>
+</body>
+</html>
+ 
