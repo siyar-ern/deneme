@@ -80,7 +80,37 @@
         .bar-fill { background: var(--primary); height: 100%; border-radius: 6px; transition: width 0.5s ease; }
         .bar-value { width: 60px; font-size: 0.9rem; font-weight: 600; color: var(--dark); }
         .bar-actions { width: 50px; text-align: right; }
+
+        /* ===== CİRO & KÂR SEKMESİ ===== */
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .summary-card { background: white; border-radius: 10px; padding: 18px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); border-top: 4px solid var(--primary); }
+        .summary-card.week { border-top-color: var(--info); }
+        .summary-card.month { border-top-color: var(--btn-purple); }
+        .summary-card h4 { margin: 0 0 10px 0; font-size: 0.95rem; color: var(--muted); font-weight: 600; }
+        .summary-row { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 4px; }
+        .summary-row.big { font-size: 1.3rem; font-weight: 600; color: var(--dark); margin-bottom: 8px; }
+        .summary-row .profit { color: #27ae60; font-weight: 600; }
+        .summary-row .cost { color: var(--danger); }
+        .summary-sub { font-size: 0.78rem; color: var(--muted); margin-top: 6px; }
+
+        .period-toggle { display: inline-flex; background: #f1f2f6; border-radius: 8px; padding: 4px; gap: 4px; flex-wrap: wrap; }
+        .period-btn { border: none; background: transparent; padding: 7px 16px; border-radius: 6px; font-family: inherit; font-weight: 600; font-size: 13px; color: var(--muted); cursor: pointer; }
+        .period-btn.active { background: white; color: var(--primary); box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+        .chart-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
+        .chart-head h3 { margin: 0; font-size: 1.1rem; }
+        .chart-box { position: relative; height: 340px; width: 100%; }
+
+        .num { text-align: right; white-space: nowrap; }
+        .profit-pos { color: #27ae60; font-weight: 600; }
+        .profit-neg { color: var(--danger); font-weight: 600; }
+        .cost-input { width: 100px; padding: 7px; border: 1px solid #ddd; border-radius: 5px; font-family: inherit; text-align: right; }
+        .cost-input.missing { border-color: var(--edit); background: #fffbea; }
+        .cost-input.changed { border-color: var(--info); background: #eef6fd; }
+        .badge-missing { background: var(--edit); color: white; font-size: 11px; padding: 2px 7px; border-radius: 10px; margin-left: 6px; }
+        .warn-box { background: #fffbea; border: 1px solid #f6e58d; color: #8a6d00; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 15px; display: none; }
+        .table-scroll { overflow-x: auto; }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
  
@@ -98,8 +128,8 @@
     <div id="codeModal">
         <div class="modal-content">
             <h3>Toplu Metin ile Ürün Ekle</h3>
-            <p style="font-size: 13px; color: var(--muted);">Her satıra bir ürün: <b>Ürün Adı | Kategori | İndirimli Fiyat | Eski Fiyat | Açıklama</b></p>
-            <textarea id="bulkCodeInput" placeholder="Mantı | Makarnalar | 350 | 450 | Özel yoğurtlu ev mantısı"></textarea>
+            <p style="font-size: 13px; color: var(--muted);">Her satıra bir ürün: <b>Ürün Adı | Kategori | İndirimli Fiyat | Eski Fiyat | Açıklama | Maliyet</b> (maliyet isteğe bağlı)</p>
+            <textarea id="bulkCodeInput" placeholder="Mantı | Makarnalar | 350 | 450 | Özel yoğurtlu ev mantısı | 140"></textarea>
             <div style="margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px;">
                 <button id="closeModalBtn" class="btn btn-cancel" style="display:inline-block;">Kapat</button>
                 <button id="processBulkBtn" class="btn">Hepsini Yükle</button>
@@ -127,6 +157,7 @@
             <button class="tab-btn active" id="tab-products">Ürün Yönetimi</button>
             <button class="tab-btn" id="tab-tables">Masalar ve Mutfak Takibi</button>
             <button class="tab-btn" id="tab-stats">📊 Bar Grafik İstatistikleri</button>
+            <button class="tab-btn" id="tab-revenue">💰 Ciro & Kâr</button>
         </div>
  
         <!-- 1. ÜRÜN YÖNETİMİ -->
@@ -161,6 +192,14 @@
                     <label>İndirimli Fiyat (Güncel TL)</label>
                     <input type="number" id="pPrice" placeholder="440">
                 </div>
+                <div class="form-group">
+                    <label>Maliyet (TL) <span style="font-weight:400; color:var(--muted); font-size:12px;">— Ciro & Kâr sekmesine otomatik işlenir</span></label>
+                    <input type="number" id="pCost" placeholder="Örn: 180" min="0" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Tahmini Birim Kâr</label>
+                    <div id="pProfitPreview" style="padding:10px; border:1px dashed #ddd; border-radius:5px; color:var(--muted); font-weight:600;">—</div>
+                </div>
                 <div class="form-group full">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:10px; flex-wrap:wrap;">
                         <label>Açıklama</label>
@@ -191,7 +230,7 @@
  
             <table>
                 <thead>
-                    <tr><th>Resim</th><th>İsim</th><th>Kategori</th><th>Fiyat</th><th>İşlem</th></tr>
+                    <tr><th>Resim</th><th>İsim</th><th>Kategori</th><th>Fiyat</th><th>Maliyet</th><th>İşlem</th></tr>
                 </thead>
                 <tbody id="productTable"></tbody>
             </table>
@@ -264,6 +303,79 @@
                 </div>
             </div>
         </div>
+
+        <!-- 4. CİRO & KÂR -->
+        <div id="view-revenue" class="view-section">
+            <div class="header">
+                <h2>Ciro & Kâr Raporu</h2>
+                <button class="btn btn-red logout-trigger">Çıkış Yap</button>
+            </div>
+
+            <!-- Özet Kartlar -->
+            <div class="summary-grid">
+                <div class="summary-card" id="sumToday"></div>
+                <div class="summary-card week" id="sumWeek"></div>
+                <div class="summary-card month" id="sumMonth"></div>
+            </div>
+
+            <div class="warn-box" id="costWarnBox"></div>
+
+            <!-- Ciro / Kâr Grafiği -->
+            <div class="stats-card" style="margin-top:0;">
+                <div class="chart-head">
+                    <h3 id="revChartTitle">Günlük Ciro & Kâr</h3>
+                    <div class="period-toggle" id="revPeriodToggle">
+                        <button class="period-btn active" data-period="daily">Günlük</button>
+                        <button class="period-btn" data-period="weekly">Haftalık</button>
+                        <button class="period-btn" data-period="monthly">Aylık</button>
+                    </div>
+                </div>
+                <div class="chart-box"><canvas id="revenueChart"></canvas></div>
+                <p id="revChartEmpty" style="text-align:center; color:var(--muted); display:none;">Henüz kapatılmış hesap yok. Masa hesabı "Hesap Ödendi" ile kapatıldıkça veriler burada oluşur.</p>
+            </div>
+
+            <!-- Ürün Bazlı Ciro / Kâr -->
+            <div class="stats-card">
+                <div class="chart-head">
+                    <h3>Ürün Bazlı Ciro & Kâr</h3>
+                    <div class="period-toggle" id="prodPeriodToggle">
+                        <button class="period-btn active" data-range="today">Bugün</button>
+                        <button class="period-btn" data-range="week">Bu Hafta</button>
+                        <button class="period-btn" data-range="month">Bu Ay</button>
+                        <button class="period-btn" data-range="all">Tümü</button>
+                    </div>
+                </div>
+                <div class="chart-box" style="height:300px;"><canvas id="productProfitChart"></canvas></div>
+                <div class="table-scroll" style="margin-top:15px;">
+                    <table>
+                        <thead>
+                            <tr><th>Ürün</th><th class="num">Adet</th><th class="num">Ciro</th><th class="num">Maliyet</th><th class="num">Kâr</th><th class="num">Marj</th></tr>
+                        </thead>
+                        <tbody id="productRevenueBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Ürün Maliyetleri -->
+            <div class="stats-card">
+                <div class="chart-head">
+                    <h3>🧾 Menüdeki Ürünlerin Maliyetleri</h3>
+                    <button id="saveAllCostsBtn" class="btn btn-success">💾 Değişenleri Kaydet</button>
+                </div>
+                <p style="font-size:13px; color:var(--muted); margin-top:0;">Menüye eklenen her ürün buraya otomatik gelir. Maliyeti girip kaydedin; birim kâr ve marj otomatik hesaplanır. Sarı kutular maliyeti girilmemiş ürünlerdir.</p>
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr><th>Ürün</th><th>Kategori</th><th class="num">Satış Fiyatı</th><th class="num">Maliyet (TL)</th><th class="num">Birim Kâr</th><th class="num">Marj</th><th></th></tr>
+                        </thead>
+                        <tbody id="costTableBody">
+                            <tr><td colspan="7" style="text-align:center; color:var(--muted);">Yükleniyor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p id="costStatusMsg" style="color:green; font-size:13px;"></p>
+            </div>
+        </div>
     </div>
  
     <script type="module">
@@ -299,6 +411,7 @@
                     loadAdminMenu();
                     loadProductsForStats();
                     listenToStatsAndOrders();
+                    listenToSales();
                 } else {
                     signOut(auth);
                     alert("Erişim Engellendi!");
@@ -312,7 +425,8 @@
         const tabs = [
             { btn: 'tab-products', view: 'view-products' },
             { btn: 'tab-tables', view: 'view-tables' },
-            { btn: 'tab-stats', view: 'view-stats' }
+            { btn: 'tab-stats', view: 'view-stats' },
+            { btn: 'tab-revenue', view: 'view-revenue' }
         ];
         tabs.forEach(t => {
             document.getElementById(t.btn).onclick = () => {
@@ -322,6 +436,7 @@
                 });
                 document.getElementById(t.btn).classList.add('active');
                 document.getElementById(t.view).classList.add('active');
+                if(t.view === 'view-revenue') renderRevenueView();
             };
         });
  
@@ -454,6 +569,9 @@
                     const events = activeOrders[tableNo] || [];
                     const monthsNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
                     const currentMonth = monthsNames[new Date().getMonth()];
+
+                    // Ciro & Kâr için satış kaydı (ürün maliyetleri o anki değerleriyle saklanır)
+                    await recordSale(tableNo, events);
  
                     for(const ev of events) {
                         if(ev.type === 'order' && ev.items) {
@@ -681,7 +799,7 @@
             for (let line of lines) {
                 if(!line.includes('|')) continue;
                 const p = line.split('|').map(x => x.trim());
-                await addDoc(collection(db, "products"), { name: p[0]||"Ürün", category: p[1]||"Makarnalar", price: p[2]||"100", oldPrice: p[3]||"", desc: p[4]||"", imageUrl: "", createdAt: new Date() });
+                await addDoc(collection(db, "products"), { name: p[0]||"Ürün", category: p[1]||"Makarnalar", price: p[2]||"100", oldPrice: p[3]||"", desc: p[4]||"", cost: parseCost(p[5]), imageUrl: "", createdAt: new Date() });
                 count++;
             }
             status.innerText = `${count} ürün eklendi!`;
@@ -718,6 +836,7 @@
             const btn = document.getElementById('saveBtn'), msg = document.getElementById('statusMsg'), editId = document.getElementById('editProductId').value;
             const name = document.getElementById('pName').value, category = document.getElementById('pCategory').value;
             const oldPrice = document.getElementById('pOldPrice').value, price = document.getElementById('pPrice').value, desc = document.getElementById('pDesc').value;
+            const cost = parseCost(document.getElementById('pCost').value);
             if(!name || !price) return alert("İsim ve fiyat zorunludur!");
             btn.innerText = "Kaydediliyor...";
             try {
@@ -734,11 +853,11 @@
                 }
  
                 if (editId) {
-                    const uData = { name, category, oldPrice, price, desc };
+                    const uData = { name, category, oldPrice, price, desc, cost };
                     if(finalImageUrl) uData.imageUrl = finalImageUrl;
                     await updateDoc(doc(db, "products", editId), uData);
                 } else {
-                    await addDoc(collection(db, "products"), { name, category, oldPrice, price, desc, imageUrl: finalImageUrl, createdAt: new Date() });
+                    await addDoc(collection(db, "products"), { name, category, oldPrice, price, desc, cost, imageUrl: finalImageUrl, createdAt: new Date() });
                 }
                 resetForm(); loadAdminMenu(); loadProductsForStats(); msg.innerText = "Başarılı!"; setTimeout(() => msg.innerText = '', 2000);
             } catch (e) { alert("Hata oluştu."); }
@@ -747,16 +866,22 @@
  
         async function loadAdminMenu() {
             const tbody = document.getElementById('productTable');
-            tbody.innerHTML = '<tr><td colspan="5">Yükleniyor...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6">Yükleniyor...</td></tr>';
             const snap = await getDocs(collection(db, "products"));
             tbody.innerHTML = '';
+            productsCache = [];
             snap.forEach(d => {
                 const item = d.data();
+                productsCache.push({ id: d.id, ...item });
+                const costCell = hasCost(item.cost) ? fmtTL(item.cost) : '<span class="badge-missing" style="margin:0;">Girilmedi</span>';
                 tbody.innerHTML += `<tr>
-                    <td><img src="${item.imageUrl || ''}"></td><td>${item.name}</td><td>${item.category}</td><td>${item.price} TL</td>
+                    <td><img src="${item.imageUrl || ''}"></td><td>${item.name}</td><td>${item.category}</td><td>${item.price} TL</td><td>${costCell}</td>
                     <td><button class="btn btn-edit btn-sm" onclick="editProduct('${d.id}')">Düzenle</button> <button class="btn btn-red btn-sm" onclick="deleteProduct('${d.id}')">Sil</button></td>
                 </tr>`;
             });
+            // Menüdeki ürünler maliyet tablosuna otomatik yansır
+            renderCostTable();
+            renderRevenueView();
         }
  
         window.editProduct = async (id) => {
@@ -769,6 +894,8 @@
                 document.getElementById('pOldPrice').value = data.oldPrice || '';
                 document.getElementById('pPrice').value = data.price;
                 document.getElementById('pDesc').value = data.desc || '';
+                document.getElementById('pCost').value = hasCost(data.cost) ? data.cost : '';
+                updateProfitPreview();
                 
                 imagePreview.style.display = 'none';
                 aiGeneratedPreview.style.display = 'none';
@@ -792,6 +919,7 @@
             document.getElementById('editProductId').value = '';
             document.getElementById('pName').value = ''; document.getElementById('pOldPrice').value = '';
             document.getElementById('pPrice').value = ''; document.getElementById('pDesc').value = '';
+            document.getElementById('pCost').value = ''; updateProfitPreview();
             fileInput.value = ''; 
             imagePreview.style.display = 'none'; imagePreview.src = '';
             aiGeneratedPreview.style.display = 'none'; aiGeneratedPreview.src = '';
@@ -808,6 +936,375 @@
             if(confirm("Silmek istiyor musunuz?")) { await deleteDoc(doc(db, "products", id)); loadAdminMenu(); loadProductsForStats(); }
         };
  
+        // ==========================================
+        // CİRO & KÂR + ÜRÜN MALİYETLERİ
+        // ==========================================
+        let productsCache = [];   // menüdeki ürünler (maliyet dahil)
+        let salesCache = [];      // kapatılan hesaplar (sales koleksiyonu)
+        let revenuePeriod = 'daily';
+        let productRange = 'today';
+        let revenueChart = null, productProfitChart = null;
+
+        const COLOR_REVENUE = '#3b6fd4';
+        const COLOR_PROFIT = '#1f9d6b';
+        const MONTHS_SHORT = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
+        const MONTHS_LONG = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+
+        function hasCost(v) { return v !== undefined && v !== null && v !== '' && !isNaN(Number(v)); }
+        function parseCost(v) { return (v === undefined || v === null || String(v).trim() === '' || isNaN(Number(v))) ? null : Number(v); }
+        function fmtTL(v) { return Number(v || 0).toLocaleString('tr-TR', { maximumFractionDigits: 2 }) + ' TL'; }
+        function fmtPct(v) { return isFinite(v) ? '%' + v.toLocaleString('tr-TR', { maximumFractionDigits: 1 }) : '—'; }
+
+        // Tarih yardımcıları (yerel saat)
+        function startOfDay(d) { const x = new Date(d); x.setHours(0,0,0,0); return x; }
+        function startOfWeek(d) { const x = startOfDay(d); const day = (x.getDay() + 6) % 7; x.setDate(x.getDate() - day); return x; } // Pazartesi
+        function startOfMonth(d) { const x = startOfDay(d); x.setDate(1); return x; }
+        function dayKey(d) { return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; }
+        function monthKey(d) { return `${d.getFullYear()}-${d.getMonth()}`; }
+
+        // Bir satış kalemi için maliyet: satış anında kaydedilen > ürünün güncel maliyeti > bilinmiyor(null)
+        function resolveItemCost(it) {
+            if(hasCost(it.cost)) return Number(it.cost);
+            const p = productsCache.find(p => p.id === it.id) || productsCache.find(p => p.name === it.name);
+            return p && hasCost(p.cost) ? Number(p.cost) : null;
+        }
+
+        // Hesap kapatılırken çağrılır: satış kaydını "sales" koleksiyonuna yazar
+        async function recordSale(tableNo, events) {
+            const orderEvents = events.filter(e => e.type === 'order' && e.items && e.items.length);
+            if(orderEvents.length === 0) return;
+
+            const prodSnap = await getDocs(collection(db, "products"));
+            const byId = {}, byName = {};
+            prodSnap.forEach(d => { const p = d.data(); byId[d.id] = p; byName[p.name] = p; });
+
+            const items = [];
+            orderEvents.forEach(ev => ev.items.forEach(it => {
+                const p = byId[it.id] || byName[it.name];
+                const cost = p && hasCost(p.cost) ? Number(p.cost) : null;
+                items.push({ id: it.id || '', name: it.name, price: Number(it.price) || 0, cost });
+            }));
+
+            const total = items.reduce((s, i) => s + i.price, 0);
+            const totalCost = items.reduce((s, i) => s + (i.cost || 0), 0);
+
+            await addDoc(collection(db, "sales"), {
+                tableNo: Number(tableNo),
+                items,
+                total,
+                totalCost,
+                profit: total - totalCost,
+                orderIds: orderEvents.map(e => e.id),
+                closedBy: 'admin',
+                closedAt: new Date()
+            });
+        }
+
+        function listenToSales() {
+            onSnapshot(collection(db, "sales"), (snap) => {
+                salesCache = [];
+                snap.forEach(d => {
+                    const s = d.data();
+                    const date = s.closedAt?.toDate ? s.closedAt.toDate() : new Date(s.closedAt);
+                    if(isNaN(date)) return;
+                    salesCache.push({ id: d.id, date, items: s.items || [] });
+                });
+                renderRevenueView();
+            });
+        }
+
+        // Belirli tarih aralığındaki satışlardan ciro/maliyet/kâr hesapla
+        function aggregate(fromDate, toDate) {
+            let revenue = 0, cost = 0, qty = 0, missing = 0;
+            salesCache.forEach(s => {
+                if(s.date < fromDate || s.date >= toDate) return;
+                s.items.forEach(it => {
+                    const c = resolveItemCost(it);
+                    revenue += Number(it.price) || 0;
+                    cost += c || 0;
+                    qty++;
+                    if(c === null) missing++;
+                });
+            });
+            return { revenue, cost, profit: revenue - cost, qty, missing };
+        }
+
+        function rangeBounds(range) {
+            const now = new Date();
+            const end = new Date(now.getTime() + 1000);
+            if(range === 'today') return [startOfDay(now), end];
+            if(range === 'week') return [startOfWeek(now), end];
+            if(range === 'month') return [startOfMonth(now), end];
+            return [new Date(0), end];
+        }
+
+        function summaryCardHtml(title, a) {
+            const margin = a.revenue > 0 ? (a.profit / a.revenue) * 100 : NaN;
+            return `<h4>${title}</h4>
+                <div class="summary-row big"><span>Ciro</span><span>${fmtTL(a.revenue)}</span></div>
+                <div class="summary-row"><span>Maliyet</span><span class="cost">${fmtTL(a.cost)}</span></div>
+                <div class="summary-row"><span>Kâr</span><span class="${a.profit >= 0 ? 'profit' : 'cost'}">${fmtTL(a.profit)}</span></div>
+                <div class="summary-sub">${a.qty} ürün satıldı · Kâr marjı ${fmtPct(margin)}</div>`;
+        }
+
+        function renderRevenueView() {
+            if(!document.getElementById('view-revenue')) return;
+            // Özet kartlar
+            const today = aggregate(...rangeBounds('today'));
+            const week = aggregate(...rangeBounds('week'));
+            const month = aggregate(...rangeBounds('month'));
+            document.getElementById('sumToday').innerHTML = summaryCardHtml('📅 Bugün', today);
+            document.getElementById('sumWeek').innerHTML = summaryCardHtml('🗓️ Bu Hafta', week);
+            document.getElementById('sumMonth').innerHTML = summaryCardHtml(`📆 Bu Ay (${MONTHS_LONG[new Date().getMonth()]})`, month);
+
+            // Maliyeti eksik ürün uyarısı
+            const missingProducts = productsCache.filter(p => !hasCost(p.cost)).length;
+            const warn = document.getElementById('costWarnBox');
+            if(missingProducts > 0) {
+                warn.style.display = 'block';
+                warn.innerHTML = `⚠️ Menüdeki <b>${missingProducts}</b> ürünün maliyeti girilmemiş. Bu ürünlerin maliyeti 0 kabul edildiği için kâr olduğundan yüksek görünebilir. Aşağıdaki <b>Ürün Maliyetleri</b> tablosundan girebilirsiniz.`;
+            } else warn.style.display = 'none';
+
+            if(!document.getElementById('view-revenue').classList.contains('active')) return;
+            renderRevenueChart();
+            renderProductRevenue();
+        }
+
+        // Günlük (son 30 gün), Haftalık (son 12 hafta), Aylık (son 12 ay) kovaları
+        function buildBuckets(period) {
+            const now = new Date();
+            const buckets = [];
+            if(period === 'daily') {
+                for(let i = 29; i >= 0; i--) {
+                    const d = startOfDay(now); d.setDate(d.getDate() - i);
+                    const e = new Date(d); e.setDate(e.getDate() + 1);
+                    buckets.push({ label: `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`, from: d, to: e });
+                }
+            } else if(period === 'weekly') {
+                for(let i = 11; i >= 0; i--) {
+                    const d = startOfWeek(now); d.setDate(d.getDate() - i * 7);
+                    const e = new Date(d); e.setDate(e.getDate() + 7);
+                    const last = new Date(e); last.setDate(last.getDate() - 1);
+                    buckets.push({ label: `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]} – ${last.getDate()} ${MONTHS_SHORT[last.getMonth()]}`, from: d, to: e });
+                }
+            } else {
+                for(let i = 11; i >= 0; i--) {
+                    const d = startOfMonth(now); d.setMonth(d.getMonth() - i);
+                    const e = new Date(d); e.setMonth(e.getMonth() + 1);
+                    buckets.push({ label: `${MONTHS_SHORT[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`, from: d, to: e });
+                }
+            }
+            return buckets.map(b => ({ ...b, ...aggregate(b.from, b.to) }));
+        }
+
+        function chartBaseOptions(horizontal) {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: horizontal ? 'y' : 'x',
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { position: 'top', align: 'end', labels: { boxWidth: 12, boxHeight: 12, useBorderRadius: true, borderRadius: 3, font: { family: 'Poppins' } } },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => `${ctx.dataset.label}: ${fmtTL(horizontal ? ctx.parsed.x : ctx.parsed.y)}`
+                        }
+                    }
+                },
+                scales: {
+                    [horizontal ? 'y' : 'x']: { grid: { display: false }, ticks: { font: { family: 'Poppins', size: 11 }, color: '#7f8fa6', autoSkip: true, maxRotation: 0 } },
+                    [horizontal ? 'x' : 'y']: { beginAtZero: true, grid: { color: '#eef0f4' }, border: { display: false }, ticks: { font: { family: 'Poppins', size: 11 }, color: '#7f8fa6', callback: v => Number(v).toLocaleString('tr-TR') + ' ₺' } }
+                }
+            };
+        }
+
+        function barDataset(label, data, color) {
+            return { label, data, backgroundColor: color, borderRadius: 4, borderSkipped: 'start', maxBarThickness: 28, categoryPercentage: 0.7, barPercentage: 0.9 };
+        }
+
+        function renderRevenueChart() {
+            if(typeof Chart === 'undefined') return;
+            const titles = { daily: 'Günlük Ciro & Kâr (Son 30 Gün)', weekly: 'Haftalık Ciro & Kâr (Son 12 Hafta)', monthly: 'Aylık Ciro & Kâr (Son 12 Ay)' };
+            document.getElementById('revChartTitle').innerText = titles[revenuePeriod];
+            document.getElementById('revChartEmpty').style.display = salesCache.length === 0 ? 'block' : 'none';
+
+            const buckets = buildBuckets(revenuePeriod);
+            const opts = chartBaseOptions(false);
+            opts.plugins.tooltip.callbacks.footer = (items) => {
+                const b = buckets[items[0].dataIndex];
+                return `Maliyet: ${fmtTL(b.cost)}\n${b.qty} ürün satıldı`;
+            };
+            const data = {
+                labels: buckets.map(b => b.label),
+                datasets: [
+                    barDataset('Ciro', buckets.map(b => b.revenue), COLOR_REVENUE),
+                    barDataset('Kâr', buckets.map(b => b.profit), COLOR_PROFIT)
+                ]
+            };
+            if(revenueChart) revenueChart.destroy();
+            revenueChart = new Chart(document.getElementById('revenueChart'), { type: 'bar', data, options: opts });
+        }
+
+        function renderProductRevenue() {
+            const [from, to] = rangeBounds(productRange);
+            const map = {};
+            salesCache.forEach(s => {
+                if(s.date < from || s.date >= to) return;
+                s.items.forEach(it => {
+                    const c = resolveItemCost(it);
+                    if(!map[it.name]) map[it.name] = { name: it.name, qty: 0, revenue: 0, cost: 0, missing: false };
+                    const r = map[it.name];
+                    r.qty++; r.revenue += Number(it.price) || 0; r.cost += c || 0;
+                    if(c === null) r.missing = true;
+                });
+            });
+            const rows = Object.values(map).map(r => ({ ...r, profit: r.revenue - r.cost })).sort((a, b) => b.revenue - a.revenue);
+
+            const tbody = document.getElementById('productRevenueBody');
+            if(rows.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--muted);">Bu dönemde satış yok.</td></tr>';
+            } else {
+                let tR = 0, tC = 0, tQ = 0;
+                tbody.innerHTML = rows.map(r => {
+                    tR += r.revenue; tC += r.cost; tQ += r.qty;
+                    const m = r.revenue > 0 ? (r.profit / r.revenue) * 100 : NaN;
+                    return `<tr>
+                        <td>${r.name}${r.missing ? '<span class="badge-missing">maliyet yok</span>' : ''}</td>
+                        <td class="num">${r.qty}</td>
+                        <td class="num">${fmtTL(r.revenue)}</td>
+                        <td class="num">${fmtTL(r.cost)}</td>
+                        <td class="num ${r.profit >= 0 ? 'profit-pos' : 'profit-neg'}">${fmtTL(r.profit)}</td>
+                        <td class="num">${fmtPct(m)}</td>
+                    </tr>`;
+                }).join('') + `<tr style="background:#f8f9fb; font-weight:600;">
+                        <td>TOPLAM</td><td class="num">${tQ}</td><td class="num">${fmtTL(tR)}</td><td class="num">${fmtTL(tC)}</td>
+                        <td class="num ${tR - tC >= 0 ? 'profit-pos' : 'profit-neg'}">${fmtTL(tR - tC)}</td>
+                        <td class="num">${fmtPct(tR > 0 ? ((tR - tC) / tR) * 100 : NaN)}</td></tr>`;
+            }
+
+            if(typeof Chart === 'undefined') return;
+            const top = rows.slice(0, 10);
+            document.querySelector('#productProfitChart').parentElement.style.height = Math.max(160, top.length * 34 + 70) + 'px';
+            const data = {
+                labels: top.map(r => r.name),
+                datasets: [
+                    barDataset('Ciro', top.map(r => r.revenue), COLOR_REVENUE),
+                    barDataset('Kâr', top.map(r => r.profit), COLOR_PROFIT)
+                ]
+            };
+            const opts = chartBaseOptions(true);
+            opts.plugins.tooltip.callbacks.footer = (items) => { const r = top[items[0].dataIndex]; return `${r.qty} adet · Maliyet: ${fmtTL(r.cost)}`; };
+            if(productProfitChart) productProfitChart.destroy();
+            productProfitChart = new Chart(document.getElementById('productProfitChart'), { type: 'bar', data, options: opts });
+        }
+
+        // Dönem butonları
+        document.querySelectorAll('#revPeriodToggle .period-btn').forEach(b => b.onclick = () => {
+            document.querySelectorAll('#revPeriodToggle .period-btn').forEach(x => x.classList.remove('active'));
+            b.classList.add('active');
+            revenuePeriod = b.dataset.period;
+            renderRevenueChart();
+        });
+        document.querySelectorAll('#prodPeriodToggle .period-btn').forEach(b => b.onclick = () => {
+            document.querySelectorAll('#prodPeriodToggle .period-btn').forEach(x => x.classList.remove('active'));
+            b.classList.add('active');
+            productRange = b.dataset.range;
+            renderProductRevenue();
+        });
+
+        // ---- Ürün Maliyetleri Tablosu (menüden otomatik) ----
+        function costRowCalc(price, cost) {
+            const p = Number(price) || 0;
+            if(!hasCost(cost)) return { profitHtml: '<span style="color:var(--muted);">—</span>', marginHtml: '—' };
+            const profit = p - Number(cost);
+            const margin = p > 0 ? (profit / p) * 100 : NaN;
+            return { profitHtml: `<span class="${profit >= 0 ? 'profit-pos' : 'profit-neg'}">${fmtTL(profit)}</span>`, marginHtml: fmtPct(margin) };
+        }
+
+        function renderCostTable() {
+            const tbody = document.getElementById('costTableBody');
+            if(productsCache.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--muted);">Menüde ürün yok.</td></tr>';
+                return;
+            }
+            const sorted = [...productsCache].sort((a, b) => (a.category || '').localeCompare(b.category || '', 'tr') || (a.name || '').localeCompare(b.name || '', 'tr'));
+            tbody.innerHTML = sorted.map(p => {
+                const c = costRowCalc(p.price, p.cost);
+                const val = hasCost(p.cost) ? p.cost : '';
+                return `<tr data-id="${p.id}">
+                    <td><b>${p.name}</b></td>
+                    <td>${p.category || ''}</td>
+                    <td class="num">${fmtTL(p.price)}</td>
+                    <td class="num"><input type="number" min="0" step="0.01" class="cost-input ${val === '' ? 'missing' : ''}" data-id="${p.id}" data-price="${Number(p.price) || 0}" data-orig="${val}" value="${val}" placeholder="Gir"></td>
+                    <td class="num cost-profit">${c.profitHtml}</td>
+                    <td class="num cost-margin">${c.marginHtml}</td>
+                    <td><button class="btn btn-success" style="padding:5px 10px; font-size:12px;" onclick="window.saveSingleCost('${p.id}')">Kaydet</button></td>
+                </tr>`;
+            }).join('');
+
+            tbody.querySelectorAll('.cost-input').forEach(inp => {
+                inp.oninput = () => {
+                    const row = inp.closest('tr');
+                    const c = costRowCalc(inp.dataset.price, parseCost(inp.value));
+                    row.querySelector('.cost-profit').innerHTML = c.profitHtml;
+                    row.querySelector('.cost-margin').innerHTML = c.marginHtml;
+                    inp.classList.toggle('changed', inp.value !== inp.dataset.orig);
+                    inp.classList.toggle('missing', inp.value === '');
+                };
+                inp.onkeydown = (e) => { if(e.key === 'Enter') window.saveSingleCost(inp.dataset.id); };
+            });
+        }
+
+        async function saveCostValue(id, value) {
+            const cost = parseCost(value);
+            await updateDoc(doc(db, "products", id), { cost });
+            const p = productsCache.find(x => x.id === id);
+            if(p) p.cost = cost;
+        }
+
+        function costStatus(text, ok = true) {
+            const m = document.getElementById('costStatusMsg');
+            m.style.color = ok ? 'green' : 'var(--danger)';
+            m.innerText = text;
+            setTimeout(() => m.innerText = '', 2500);
+        }
+
+        window.saveSingleCost = async (id) => {
+            const inp = document.querySelector(`.cost-input[data-id="${id}"]`);
+            if(!inp) return;
+            try {
+                await saveCostValue(id, inp.value);
+                costStatus('✅ Maliyet kaydedildi.');
+                loadAdminMenu();
+            } catch(e) { costStatus('❌ Kaydedilemedi.', false); }
+        };
+
+        document.getElementById('saveAllCostsBtn').onclick = async () => {
+            const changed = [...document.querySelectorAll('.cost-input')].filter(i => i.value !== i.dataset.orig);
+            if(changed.length === 0) return costStatus('Değişiklik yok.');
+            const btn = document.getElementById('saveAllCostsBtn');
+            btn.disabled = true; btn.innerText = 'Kaydediliyor...';
+            try {
+                await Promise.all(changed.map(i => saveCostValue(i.dataset.id, i.value)));
+                costStatus(`✅ ${changed.length} ürünün maliyeti kaydedildi.`);
+                loadAdminMenu();
+            } catch(e) { costStatus('❌ Bazı maliyetler kaydedilemedi.', false); }
+            btn.disabled = false; btn.innerText = '💾 Değişenleri Kaydet';
+        };
+
+        // Ürün ekleme formunda canlı kâr önizlemesi
+        function updateProfitPreview() {
+            const el = document.getElementById('pProfitPreview');
+            const price = Number(document.getElementById('pPrice').value);
+            const cost = parseCost(document.getElementById('pCost').value);
+            if(!price || cost === null) { el.innerHTML = '—'; el.style.color = 'var(--muted)'; return; }
+            const profit = price - cost;
+            el.innerHTML = `${fmtTL(profit)} &nbsp;<span style="font-weight:400;">(marj ${fmtPct((profit / price) * 100)})</span>`;
+            el.style.color = profit >= 0 ? '#27ae60' : 'var(--danger)';
+        }
+        document.getElementById('pPrice').addEventListener('input', updateProfitPreview);
+        document.getElementById('pCost').addEventListener('input', updateProfitPreview);
+
         // ==========================================
         // N8N ENTEGRASYONU
         // ==========================================
