@@ -266,6 +266,9 @@
                     const events = activeOrders[tableNo] || [];
                     const monthsNames = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
                     const currentMonth = monthsNames[new Date().getMonth()];
+
+                    // Admin paneli "Ciro & Kâr" sekmesi için satış kaydı
+                    await recordSale(tableNo, events);
  
                     for(const ev of events) {
                         if(ev.type === 'order' && ev.items) {
@@ -297,6 +300,38 @@
             }
         };
  
+        // Hesap kapatılırken ciro / maliyet / kâr kaydını "sales" koleksiyonuna yazar
+        async function recordSale(tableNo, events) {
+            const orderEvents = events.filter(e => e.type === 'order' && e.items && e.items.length);
+            if(orderEvents.length === 0) return;
+
+            const prodSnap = await getDocs(collection(db, "products"));
+            const byId = {}, byName = {};
+            prodSnap.forEach(d => { const p = d.data(); byId[d.id] = p; byName[p.name] = p; });
+            const hasCost = v => v !== undefined && v !== null && v !== '' && !isNaN(Number(v));
+
+            const items = [];
+            orderEvents.forEach(ev => ev.items.forEach(it => {
+                const p = byId[it.id] || byName[it.name];
+                const cost = p && hasCost(p.cost) ? Number(p.cost) : null;
+                items.push({ id: it.id || '', name: it.name, price: Number(it.price) || 0, cost });
+            }));
+
+            const total = items.reduce((s, i) => s + i.price, 0);
+            const totalCost = items.reduce((s, i) => s + (i.cost || 0), 0);
+
+            await addDoc(collection(db, "sales"), {
+                tableNo: Number(tableNo),
+                items,
+                total,
+                totalCost,
+                profit: total - totalCost,
+                orderIds: orderEvents.map(e => e.id),
+                closedBy: 'garson',
+                closedAt: new Date()
+            });
+        }
+
         window.markItemServed = async (orderId, itemIndex) => {
             try {
                 const orderRef = doc(db, "orders", orderId);
